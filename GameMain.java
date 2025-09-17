@@ -5,21 +5,21 @@ import java.util.Scanner;
 
 public class GameMain {
     public static void main(String[] args) {
-        System.out.println("=== Arena de Guerreros con Armas ===");
+        System.out.println("=== pelea de peleadores peleando ===");
 
-        // Lista de armas disponibles
+        //armas disponibles
         List<Weapons> armas = new ArrayList<>();
-        armas.add(new Weapons("Espada legendaria", 20));
-        armas.add(new Weapons("Arco largo", 15));
-        armas.add(new Weapons("Hacha de guerra", 25));
-        armas.add(new Weapons("Lanza sagrada", 18));
+        armas.add(new Weapons("una yuca", 20));
+        armas.add(new Weapons("espada de icopor", 15));
+        armas.add(new Weapons("machete oxidado", 25));
+        armas.add(new Weapons("cebollin (lanzable)", 18));
 
         Scanner sc = new Scanner(System.in);
         Random rand = new Random();
 
-        // ==== CREAR JUGADORES ====
+        // ==== CREAR PELIADORES ====
         List<Player> jugadores = new ArrayList<>();
-        System.out.print("¿Cuántos jugadores participarán? ");
+        System.out.print("¿Cuántos se van a dar trompa? ");
         int numJugadores = sc.nextInt();
         sc.nextLine(); // limpiar buffer
 
