@@ -5,7 +5,7 @@ import java.util.Scanner;
 // Cliente simple que se conecta al servidor y permite enviar comandos por consola
 public class GameClient {
     public static void main(String[] args) throws IOException {
-        String host = "localhost"; // cambiar si el server está en otra máquina
+        String host = "10.10.8.101"; // cambiar si el server está en otra máquina
         int port = 5000;
 
         Socket socket = new Socket(host, port);
@@ -32,7 +32,7 @@ public class GameClient {
 
         // Bucle principal: leer comandos desde la consola y enviarlos al servidor
         while (true) {
-            System.out.print("Comando (ATTACK/STATUS/EXIT): ");
+            System.out.print("Comando (ATTACK/HEAL/PLAYERS/CHALLENGE:<NOMBRE>/STATUS/EXIT): ");
             String cmd = sc.nextLine().trim();
             if (cmd.equalsIgnoreCase("EXIT")) {
                 break;
