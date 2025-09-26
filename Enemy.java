@@ -8,7 +8,7 @@ public class Enemy extends Thread {
     private int attackPower;
     private int attacks;
     private int hp = 50;
-    private boolean estaVivo = true; // Cambié el nombre
+    private boolean estaVivo = true;
 
     public Enemy(List<Player> jugadores, String enemyName, int attackPower, int attacks) {
         this.jugadores = jugadores;
@@ -20,7 +20,7 @@ public class Enemy extends Thread {
     @Override
     public void run() {
         Random rand = new Random();
-        for (int i = 0; i < attacks && estaVivo; i++) { // Usar estaVivo
+        for (int i = 0; i < attacks && estaVivo; i++) {
             boolean alguienVivo = jugadores.stream().anyMatch(Player::isAlive);
             if (!alguienVivo) {
                 System.out.println(enemyName + " no tiene a quién atacar y deja de atacar.");
@@ -61,12 +61,17 @@ public class Enemy extends Thread {
         return enemyName;
     }
 
-    // CAMBIÉ EL NOMBRE DEL MÉTODO
     public boolean estaVivo() {
         return estaVivo;
     }
 
     public int getHp() {
         return hp;
+    }
+       
+    // Método para reiniciar el enemigo a su estado inicial
+    public void reset() {
+        this.hp = 50;
+        this.estaVivo = true;
     }
 }

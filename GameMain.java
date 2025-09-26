@@ -5,29 +5,24 @@ import java.util.Scanner;
 
 public class GameMain {
     public static void main(String[] args) {
-        System.out.println("=== pelea de peleadores peleando ===");
-
-        //armas disponibles
         List<Weapons> armas = new ArrayList<>();
         armas.add(new Weapons("una yuca", 20));
         armas.add(new Weapons("espada de icopor", 15));
         armas.add(new Weapons("machete oxidado", 25));
-        armas.add(new Weapons("cebollin (lanzable)", 18));
+        armas.add(new Weapons("$800 cebollin", 18));
 
         Scanner sc = new Scanner(System.in);
         Random rand = new Random();
 
-        // ==== CREAR PELIADORES ====
         List<Player> jugadores = new ArrayList<>();
         System.out.print("¿Cuántos se van a dar trompa? ");
         int numJugadores = sc.nextInt();
-        sc.nextLine(); // limpiar buffer
+        sc.nextLine();
 
         for (int j = 0; j < numJugadores; j++) {
             System.out.print("\nNombre del jugador " + (j + 1) + ": ");
             String nombre = sc.nextLine();
 
-            // Validar arma elegida
             Weapons chosen = null;
             while (chosen == null) {
                 System.out.println(nombre + ", elige tu arma:");
@@ -37,7 +32,7 @@ public class GameMain {
                 }
                 System.out.print("Opción: ");
                 int choice = sc.nextInt();
-                sc.nextLine(); // limpiar buffer
+                sc.nextLine();
 
                 if (choice >= 1 && choice <= armas.size()) {
                     chosen = armas.get(choice - 1);
@@ -50,25 +45,22 @@ public class GameMain {
             System.out.println(nombre + " equipado con " + chosen.getName());
         }
 
-        // ==== CREAR ENEMIGOS ====
         List<Enemy> enemigos = new ArrayList<>();
         enemigos.add(new Enemy(jugadores, "e1", 15, 5));
         enemigos.add(new Enemy(jugadores, "e2", 10, 7));
         enemigos.add(new Enemy(jugadores, "e3", 12, 6));
         enemigos.add(new Enemy(jugadores, "e4", 18, 4));
 
-        // Iniciar hilos enemigos
         for (Enemy e : enemigos) {
             e.start();
         }
 
-        // ==== BUCLE DE COMBATE ====
         while (jugadores.stream().anyMatch(Player::isAlive)) {
             for (Player p : jugadores) {
                 if (p.isAlive()) {
                     System.out.println("\nTurno de " + p.getName() + " (vida: " + p.getHp() + ")");
                     System.out.println("Presiona ENTER para continuar...");
-                    sc.nextLine(); // esperar Enter
+                    sc.nextLine();
 
                     System.out.print("¿Deseas atacar este turno? (y/n): ");
                     String decision = sc.nextLine();
@@ -76,9 +68,8 @@ public class GameMain {
                     if (decision.equalsIgnoreCase("y")) {
                         int dado = rand.nextInt(100);
                         if (dado < 50) {
-                            // Ataca a todos los enemigos
                             for (Enemy e : enemigos) {
-                                if (e.isAlive()) {
+                                if (e.estaVivo()) {
                                     p.attackEnemy(e);
                                 }
                             }
@@ -92,7 +83,6 @@ public class GameMain {
             }
         }
 
-        // Esperar a que terminen los hilos enemigos
         for (Enemy e : enemigos) {
             try {
                 e.join();
@@ -101,7 +91,6 @@ public class GameMain {
             }
         }
 
-        // ==== RESULTADO FINAL ====
         if (jugadores.stream().anyMatch(Player::isAlive)) {
             System.out.println("\n¡El equipo de jugadores sobrevivió!");
             for (Player p : jugadores) {
