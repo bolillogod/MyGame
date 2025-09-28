@@ -1,4 +1,3 @@
-
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -169,7 +168,7 @@ public class ClientHandler extends Thread {
         }
     }
 
-    // MÉTODO PARA ATACAR JUGADORES
+    // MÉTODO PARA ATACAR JUGADORES - CORREGIDO
     private void attackPlayer() {
         if (opponent == null) {
             sendMessage("NO_OPPONENT");
@@ -183,19 +182,45 @@ public class ClientHandler extends Thread {
         if (opponent.getHp() <= 0) {
             sendMessage("YOU_WIN");
             opponent.sendMessage("YOU_LOSE");
-            // Finalizar batalla
-            this.inBattle = false;
-            opponent.inBattle = false;
-            this.opponent = null;
-            opponent.opponent = null;
+            
+            // CORREGIDO: Finalizar batalla correctamente
+            endBattle();
         }
     }
 
-    // MÉTODO PARA DESAFIAR JUGADORES - CORREGIDO
+    // NUEVO MÉTODO: Finalizar batalla
+    private void endBattle() {
+        if (opponent != null) {
+            // Notificar fin de batalla
+            sendMessage("BATTLE_END:VICTORY");
+            opponent.sendMessage("BATTLE_END:DEFEAT");
+            
+            // Limpiar estado de ambos jugadores
+            this.inBattle = false;
+            opponent.inBattle = false;
+            
+            // Guardar referencia antes de limpiar
+            ClientHandler tempOpponent = opponent;
+            
+            // Limpiar referencias
+            this.opponent = null;
+            tempOpponent.opponent = null;
+            
+            System.out.println("Batalla finalizada entre " + playerName + " y " + tempOpponent.getPlayerName());
+        }
+    }
+
+    // MÉTODO PARA DESAFIAR JUGADORES - MEJORADO
     private void challengePlayer(String targetName) {
         if (targetName == null || targetName.trim().isEmpty()) {
             sendMessage("ERROR: Debes especificar el nombre del jugador a desafiar");
             sendMessage("Uso: CHALLENGE:nombre_del_jugador");
+            return;
+        }
+
+        // EVITAR AUTO-DESAFIO
+        if (targetName.equalsIgnoreCase(this.playerName)) {
+            sendMessage("ERROR: No puedes desafiarte a ti mismo");
             return;
         }
 
@@ -206,6 +231,8 @@ public class ClientHandler extends Thread {
                 player != this) {
                 if (player.inBattle) {
                     sendMessage("ERROR: " + targetName + " ya está en batalla");
+                } else if (this.inBattle) {
+                    sendMessage("ERROR: Ya estás en una batalla");
                 } else {
                     player.sendMessage("CHALLENGE_REQUEST:" + playerName);
                     sendMessage("CHALLENGE_SENT:" + targetName + " - Esperando respuesta...");
@@ -219,7 +246,7 @@ public class ClientHandler extends Thread {
         }
     }
 
-    // MÉTODO PARA ACEPTAR DESAFÍOS - CORREGIDO
+    // MÉTODO PARA ACEPTAR DESAFÍOS - MEJORADO
     private void acceptChallenge(String challengerName) {
         if (challengerName == null || challengerName.trim().isEmpty()) {
             sendMessage("ERROR: Debes especificar el nombre del jugador que te desafió");
@@ -231,12 +258,24 @@ public class ClientHandler extends Thread {
         for (ClientHandler player : players) {
             if (player.getPlayerName() != null && 
                 player.getPlayerName().equalsIgnoreCase(challengerName.trim())) {
+                
+                if (this.inBattle) {
+                    sendMessage("ERROR: Ya estás en una batalla");
+                    return;
+                }
+                
                 this.setOpponent(player);
                 player.setOpponent(this);
                 this.setInBattle(true);
                 player.setInBattle(true);
+                
                 sendMessage("BATTLE_START:" + challengerName + " - ¡Que comience la batalla!");
                 player.sendMessage("BATTLE_START:" + playerName + " - ¡Que comience la batalla!");
+                
+                // Enviar estado inicial de ambos jugadores
+                sendMessage("HP_OPPONENT:" + player.getHp());
+                player.sendMessage("HP_OPPONENT:" + this.getHp());
+                
                 found = true;
                 break;
             }
@@ -246,7 +285,7 @@ public class ClientHandler extends Thread {
         }
     }
 
-    // MÉTODO PRINCIPAL DEL HILO - CORREGIDO
+    // MÉTODO PRINCIPAL DEL HILO - MEJORADO
     @Override
     public void run() {
         try {
@@ -263,7 +302,7 @@ public class ClientHandler extends Thread {
                     continue;
                 }
 
-                // PROCESAMIENTO DE COMANDOS - CORREGIDO
+                // PROCESAMIENTO DE COMANDOS - MEJORADO
                 if (line.startsWith("NAME:")) {
                     playerName = line.substring(5).trim();
                     sendMessage("WELCOME " + playerName);
@@ -292,7 +331,6 @@ public class ClientHandler extends Thread {
                 else if (line.equals("WEAPONS") || line.equals("5")) {
                     enterWeaponMenu();
                 } 
-                // CORREGIDO: Separar lógica de CHALLENGE
                 else if (line.startsWith("CHALLENGE:")) {
                     String targetName = line.substring(10).trim();
                     challengePlayer(targetName);
@@ -301,7 +339,6 @@ public class ClientHandler extends Thread {
                     sendMessage("ERROR: Uso correcto - CHALLENGE:nombre_del_jugador");
                     sendMessage("Ejemplo: CHALLENGE:Juan");
                 } 
-                // CORREGIDO: Separar lógica de ACCEPT
                 else if (line.startsWith("ACCEPT:")) {
                     String challengerName = line.substring(7).trim();
                     acceptChallenge(challengerName);
@@ -316,7 +353,6 @@ public class ClientHandler extends Thread {
                 else if (line.equals("HELP") || line.equals("9")) {
                     sendMainMenu();
                 } 
-                // AGREGADO: Comando EXIT que faltaba
                 else if (line.equals("EXIT") || line.equals("0")) {
                     sendMessage("¡Hasta luego!");
                     break;
@@ -453,7 +489,7 @@ public class ClientHandler extends Thread {
         sendMessage(menu.toString());
     }
 
-    // LIMPIEZA AL DESCONECTAR
+    // LIMPIEZA AL DESCONECTAR - MEJORADO
     private void cleanup() {
         try {
             if (socket != null && !socket.isClosed()) {
@@ -466,11 +502,11 @@ public class ClientHandler extends Thread {
             players.remove(this);
         }
 
-        // Si estaba en batalla, liberar al oponente
-        if (opponent != null) {
-            opponent.opponent = null;
-            opponent.inBattle = false;
+        // Si estaba en batalla, finalizarla correctamente
+        if (inBattle && opponent != null) {
             opponent.sendMessage("TU_OPONENTE_SE_DESCONECTO");
+            opponent.inBattle = false;
+            opponent.opponent = null;
         }
 
         System.out.println("Jugador " + (playerName != null ? playerName : "desconocido") + " desconectado.");

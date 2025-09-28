@@ -6,7 +6,7 @@ public class GameClient {
     private static boolean showMenu = true;
 
     public static void main(String[] args) {
-        String host = "10.10.9.201"; // Cambia por la IP del servidor si es necesario
+        String host = "localhost"; // Cambia por la IP del servidor si es necesario
         int port = 5000;
 
         try {
@@ -36,10 +36,8 @@ public class GameClient {
                             showMenu = false;
                         } else if (message.equals("YOU_WIN")) {
                             System.out.println("🏆 ¡GANASTE LA BATALLA!");
-                            showMenu = true;
                         } else if (message.equals("YOU_LOSE")) {
                             System.out.println("😞 Perdiste la batalla. ¡Mejor suerte la próxima vez!");
-                            showMenu = true;
                         } else if (message.startsWith("CHALLENGE_REQUEST:")) {
                             String challenger = message.substring(18);
                             System.out.println("⚔️  " + challenger + " te ha desafiado a una batalla!");
@@ -51,6 +49,8 @@ public class GameClient {
                             if (parts.length >= 2) {
                                 System.out.println("⚔️  Atacaste a " + parts[0] + " causando " + parts[1] + " de daño");
                             }
+                        } else if (message.startsWith("YOU_ATTACKED_OPPONENT:")) {
+                            System.out.println("⚔️  Atacaste a tu oponente causando " + message.substring(22) + " de daño");
                         } else if (message.startsWith("ENEMY_DEFEATED:")) {
                             System.out.println("🎯 ¡Derrotaste a " + message.substring(15) + "!");
                         } else if (message.equals("VICTORY")) {
@@ -70,6 +70,16 @@ public class GameClient {
                             showMenu = true;
                         } else if (message.startsWith("ERROR:")) {
                             System.out.println("❌ " + message);
+                        } else if (message.equals("BATTLE_END:VICTORY")) {
+                            System.out.println("🏆 ¡BATALLA TERMINADA! Eres el vencedor.");
+                            showMenu = true;
+                        } else if (message.equals("BATTLE_END:DEFEAT")) {
+                            System.out.println("😞 La batalla ha terminado. ¡Mejor suerte la próxima vez!");
+                            showMenu = true;
+                        } else if (message.startsWith("HP_OPPONENT:")) {
+                            System.out.println("💔 HP del oponente: " + message.substring(12));
+                        } else if (message.equals("NO_OPPONENT")) {
+                            System.out.println("❌ No tienes oponente. Usa CHALLENGE para desafiar a alguien.");
                         } else {
                             // Mensaje normal del servidor
                             System.out.println(message);
