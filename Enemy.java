@@ -69,7 +69,6 @@ public class Enemy extends Thread {
         return hp;
     }
        
-    // Método para reiniciar el enemigo a su estado inicial
     public void reset() {
         this.hp = 50;
         this.estaVivo = true;

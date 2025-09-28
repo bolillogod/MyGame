@@ -9,7 +9,7 @@ public class GameMain {
         armas.add(new Weapons("una yuca", 20));
         armas.add(new Weapons("espada de icopor", 15));
         armas.add(new Weapons("machete oxidado", 25));
-        armas.add(new Weapons("$800 cebollin", 18));
+        armas.add(new Weapons("cebollin (lanzable)", 18));
 
         Scanner sc = new Scanner(System.in);
         Random rand = new Random();

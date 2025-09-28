@@ -1,111 +1,86 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-// Servidor simple que empareja a dos jugadores por batalla
 public class GameServer {
-    // Guardamos las sesiones activas (pares de handlers)
-    private static final List<ClientHandler> waiting = new ArrayList<>();
-    private static final List<ClientHandler> players = new ArrayList<>();
-    private static final List<Enemy> enemies = new ArrayList<>();
-    
-    // NUEVO: Lista para almacenar resultados de partidas
-    private static final List<MatchResult> matchResults = new ArrayList<>();
+    // Usar listas thread-safe para evitar problemas de concurrencia
+    private static final List<ClientHandler> waiting = Collections.synchronizedList(new ArrayList<>());
+    private static final List<ClientHandler> players = new CopyOnWriteArrayList<>();
+    private static final List<Enemy> enemies = new CopyOnWriteArrayList<>();
 
-    public static void main(String[] args) throws IOException {
-        // Inicializar enemigos
-        enemies.add(new Enemy(null, "e1", 10, 5));
-        enemies.add(new Enemy(null, "e2", 10, 7));
-        enemies.add(new Enemy(null, "e3", 10, 6));
-        enemies.add(new Enemy(null, "e4", 10, 4));
-        
-        // Puerto donde escucha el servidor
-        int port = 5000;
-        ServerSocket serverSocket = new ServerSocket(port);
-        System.out.println("Servidor iniciado en puerto " + port);
+    public static void main(String[] args) {
+        try {
+            // ================= CREACIÓN DE ENEMIGOS =================
+            // CORREGIDO: Crear enemigos con listas vacías (serán populadas después)
+            List<Player> emptyPlayerList = new ArrayList<>(); // Lista compatible con Enemy original
+            enemies.add(new Enemy(emptyPlayerList, "Orco Salvaje", 12, 5));
+            enemies.add(new Enemy(emptyPlayerList, "Esqueleto Guerrero", 10, 7));
+            enemies.add(new Enemy(emptyPlayerList, "Gólem de Piedra", 15, 4));
+            enemies.add(new Enemy(emptyPlayerList, "Araña Gigante", 8, 8));
+            enemies.add(new Enemy(emptyPlayerList, "Dragón Menor", 18, 3));
 
-        while (true) {
-            // Espera conexiones entrantes
-            Socket clientSocket = serverSocket.accept();
-            System.out.println("Nuevo cliente conectado: " + clientSocket.getRemoteSocketAddress());
+            // ================= INICIO DEL SERVIDOR =================
+            int port = 5000;
+            ServerSocket serverSocket = new ServerSocket(port);
+            System.out.println("=== SERVIDOR DE JUEGO INICIADO ===");
+            System.out.println("Puerto: " + port);
+            System.out.println("Esperando conexiones...");
+            System.out.println("===================================");
 
-            // Crea un handler para gestionar ese cliente en un hilo separado
-            ClientHandler handler = new ClientHandler(clientSocket, players, enemies, matchResults);
-            players.add(handler);
-            handler.start();
+            // Configurar shutdown hook para cerrar el servidor correctamente
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    System.out.println("\nCerrando servidor...");
+                    serverSocket.close();
+                } catch (IOException e) {
+                    System.err.println("Error al cerrar el servidor: " + e.getMessage());
+                }
+            }));
 
-            // Guardamos en la lista de espera para emparejar (PvP)
-            synchronized (waiting) {
-                waiting.add(handler);
-                if (waiting.size() >= 2) {
-                    // Emparejar los dos primeros
-                    ClientHandler a = waiting.remove(0);
-                    ClientHandler b = waiting.remove(0);
-                    a.setOpponent(b);
-                    b.setOpponent(a);
-                    a.setInBattle(true);
-                    b.setInBattle(true);
-                    // Notificar a ambos que empiezan la batalla
-                    a.sendMessage("MATCH_START");
-                    b.sendMessage("MATCH_START");
+            // ================= ACEPTANDO CLIENTES =================
+            while (!serverSocket.isClosed()) {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    System.out.println("Nuevo cliente conectado desde: " + 
+                                     clientSocket.getRemoteSocketAddress());
+
+                    // Crear handler para el cliente
+                    ClientHandler handler = new ClientHandler(clientSocket, players, enemies);
+                    players.add(handler);
+
+                    handler.start();
+
+                    System.out.println("Total de jugadores conectados: " + players.size());
+
+                    // ELIMINADO: Sistema automático de emparejamiento
+                    // El emparejamiento ahora se hace manualmente con CHALLENGE/ACCEPT
+
+                } catch (IOException e) {
+                    if (!serverSocket.isClosed()) {
+                        System.err.println("Error aceptando cliente: " + e.getMessage());
+                    }
                 }
             }
+
+        } catch (IOException e) {
+            System.err.println("Error iniciando el servidor: " + e.getMessage());
         }
     }
-    
-    // NUEVO: Método para agregar resultados de partidas
-    public static void addMatchResult(MatchResult result) {
-        synchronized (matchResults) {
-            matchResults.add(result);
-            System.out.println("Resultado registrado: " + result);
-        }
+
+    // Método para obtener la lista de jugadores (usado por ClientHandler)
+    public static List<ClientHandler> getPlayers() {
+        return players;
     }
-    
-    // NUEVO: Método para obtener estadísticas usando Streams
-    public static String getStatistics() {
-        synchronized (matchResults) {
-            if (matchResults.isEmpty()) {
-                return "No hay estadísticas disponibles aún.";
-            }
-            
-            StringBuilder stats = new StringBuilder();
-            stats.append("=== ESTADÍSTICAS DEL SERVIDOR ===\n");
-            
-            // 1) Top 3 jugadores por victorias
-            Map<String, Long> winsByPlayer = matchResults.stream()
-                .collect(Collectors.groupingBy(MatchResult::getWinner, Collectors.counting()));
-            
-            stats.append("\n--- TOP 3 POR VICTORIAS ---\n");
-            winsByPlayer.entrySet().stream()
-                .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
-                .limit(3)
-                .forEach(e -> stats.append(e.getKey()).append(": ").append(e.getValue()).append(" victorias\n"));
-            
-            // 2) Daño promedio por partida
-            double avgDamage = matchResults.stream()
-                .collect(Collectors.averagingInt(MatchResult::getDamageDealt));
-            stats.append("\nDaño promedio por partida: ").append(String.format("%.2f", avgDamage)).append("\n");
-            
-            // 3) Duración promedio de partidas
-            double avgDuration = matchResults.stream()
-                .collect(Collectors.averagingLong(MatchResult::getDurationMs));
-            stats.append("Duración promedio: ").append(String.format("%.2f", avgDuration / 1000)).append(" segundos\n");
-            
-            // 4) Jugadores con daño medio > 50 (filtro con Streams)
-            Map<String, Double> avgDamageByPlayer = matchResults.stream()
-                .collect(Collectors.groupingBy(MatchResult::getWinner, 
-                         Collectors.averagingInt(MatchResult::getDamageDealt)));
-            
-            stats.append("\n--- JUGADORES CON DAÑO PROMEDIO > 50 ---\n");
-            avgDamageByPlayer.entrySet().stream()
-                .filter(e -> e.getValue() > 50)
-                .forEach(e -> stats.append(e.getKey()).append(": ").append(String.format("%.2f", e.getValue())).append(" de daño promedio\n"));
-            
-            // 5) Total de partidas jugadas
-            stats.append("\nTotal de partidas jugadas: ").append(matchResults.size()).append("\n");
-            
-            return stats.toString();
-        }
+
+    // Método para obtener la lista de enemigos (usado por ClientHandler)  
+    public static List<Enemy> getEnemies() {
+        return enemies;
+    }
+
+    // Método para remover un jugador (llamado cuando se desconecta)
+    public static void removePlayer(ClientHandler player) {
+        players.remove(player);
+        System.out.println("Jugador removido. Total conectados: " + players.size());
     }
 }
